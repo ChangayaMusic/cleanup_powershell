@@ -9,9 +9,6 @@ function Get-FreeSpace {
     return (Get-PSDrive C).Free / 1GB
 }
 
-# Espace libre AVANT nettoyage
-$beforeCleanup = Get-FreeSpace
-
 # Liste des étapes de nettoyage
 $cleanupSteps = @(
     "Suppression des fichiers temporaires utilisateur",
@@ -58,11 +55,60 @@ function Show-Progress {
         -CurrentOperation "$CurrentStep / $TotalSteps"
 }
 
+# Menu interactif
+function Show-Menu {
+    $selection = $null
+    $menuOptions = @("Sélectionner toutes les actions", "Sélectionner une action spécifique", "Quitter")
+
+    while ($selection -ne "Quitter") {
+        $selection = $null
+        Write-Host "`nVeuillez choisir une option :"
+        for ($i = 0; $i -lt $menuOptions.Length; $i++) {
+            Write-Host "$($i + 1). $($menuOptions[$i])"
+        }
+
+        $selection = Read-Host "Entrez le numéro de l'option (1-3)"
+
+        switch ($selection) {
+            "1" {
+                Write-Host "Vous avez choisi de sélectionner toutes les actions."
+                return $cleanupSteps
+            }
+            "2" {
+                Write-Host "Sélectionnez une action à exécuter :"
+                for ($i = 0; $i -lt $cleanupSteps.Length; $i++) {
+                    Write-Host "$($i + 1). $($cleanupSteps[$i])"
+                }
+                $actionChoice = Read-Host "Entrez le numéro de l'action"
+                return @($cleanupSteps[$actionChoice - 1])
+            }
+            "3" {
+                Write-Host "Quitter le programme."
+                return $null
+            }
+            default {
+                Write-Host "Sélection invalide, veuillez réessayer."
+            }
+        }
+    }
+}
+
+# Demande de sélection d'actions
+$selectedSteps = Show-Menu
+
+if ($selectedSteps -eq $null) {
+    Write-Host "Aucune action sélectionnée. Le script se termine." -ForegroundColor Red
+    exit
+}
+
+# Espace libre AVANT nettoyage
+$beforeCleanup = Get-FreeSpace
+
 # Boucle de nettoyage avec progression
-$stepCount = $cleanupSteps.Length
+$stepCount = $selectedSteps.Length
 $currentStep = 1
 
-foreach ($step in $cleanupSteps) {
+foreach ($step in $selectedSteps) {
     Show-Progress -Step $step -CurrentStep $currentStep -TotalSteps $stepCount
     switch ($step) {
         "Suppression des fichiers temporaires utilisateur" {
