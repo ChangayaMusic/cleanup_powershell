@@ -1,4 +1,4 @@
-﻿# Exécuter en mode silencieux
+# Exécuter en mode silencieux
 $ErrorActionPreference = "SilentlyContinue"
 
 # Définition du fichier de log
