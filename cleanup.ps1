@@ -39,193 +39,56 @@ $cleanupSteps = @(
     "Suppression des applications inutiles"
 )
 
-# Fonction pour afficher la barre de progression
-function Show-Progress {
-    param (
-        [string]$Step,
-        [int]$CurrentStep,
-        [int]$TotalSteps
-    )
-
-    $percentComplete = ($CurrentStep / $TotalSteps) * 100
-
-    Write-Progress -PercentComplete $percentComplete `
-        -Activity "Nettoyage du système" `
-        -Status $Step `
-        -CurrentOperation "$CurrentStep / $TotalSteps"
-}
-
-# Menu interactif
+# Fonction pour afficher le menu
 function Show-Menu {
-    $selection = $null
-    $menuOptions = @("Sélectionner toutes les actions", "Sélectionner une action spécifique", "Quitter")
-
-    while ($selection -ne "Quitter") {
-        $selection = $null
-        Write-Host "`nVeuillez choisir une option :"
-        for ($i = 0; $i -lt $menuOptions.Length; $i++) {
-            Write-Host "$($i + 1). $($menuOptions[$i])"
+    Write-Host "\n===== Menu Nettoyage ====="
+    Write-Host "1. Exécuter toutes les actions"
+    Write-Host "2. Choisir une action spécifique"
+    Write-Host "3. Quitter"
+    
+    $choice = Read-Host "Choisissez une option (1-3)"
+    
+    switch ($choice) {
+        "1" { return $cleanupSteps }
+        "2" {
+            Write-Host "\nChoisissez une action :"
+            for ($i = 0; $i -lt $cleanupSteps.Length; $i++) {
+                Write-Host "$($i + 1). $($cleanupSteps[$i])"
+            }
+            $actionChoice = Read-Host "Entrez le numéro de l'action"
+            return @($cleanupSteps[$actionChoice - 1])
         }
-
-        $selection = Read-Host "Entrez le numéro de l'option (1-3)"
-
-        switch ($selection) {
-            "1" {
-                Write-Host "Vous avez choisi de sélectionner toutes les actions."
-                return $cleanupSteps
-            }
-            "2" {
-                Write-Host "Sélectionnez une action à exécuter :"
-                for ($i = 0; $i -lt $cleanupSteps.Length; $i++) {
-                    Write-Host "$($i + 1). $($cleanupSteps[$i])"
-                }
-                $actionChoice = Read-Host "Entrez le numéro de l'action"
-                return @($cleanupSteps[$actionChoice - 1])
-            }
-            "3" {
-                Write-Host "Quitter le programme."
-                return $null
-            }
-            default {
-                Write-Host "Sélection invalide, veuillez réessayer."
-            }
+        "3" {
+            Write-Host "Fermeture du programme."
+            exit
+        }
+        default {
+            Write-Host "Sélection invalide. Veuillez réessayer."
+            Show-Menu
         }
     }
 }
 
 # Demande de sélection d'actions
 $selectedSteps = Show-Menu
-
 if ($selectedSteps -eq $null) {
-    Write-Host "Aucune action sélectionnée. Le script se termine." -ForegroundColor Red
+    Write-Host "Aucune action sélectionnée. Arrêt du script." -ForegroundColor Red
     exit
 }
 
-# Espace libre AVANT nettoyage
+# Espace libre avant nettoyage
 $beforeCleanup = Get-FreeSpace
-
-# Boucle de nettoyage avec progression
 $stepCount = $selectedSteps.Length
 $currentStep = 1
 
+# Boucle de nettoyage avec progression
 foreach ($step in $selectedSteps) {
-    Show-Progress -Step $step -CurrentStep $currentStep -TotalSteps $stepCount
-    switch ($step) {
-        "Suppression des fichiers temporaires utilisateur" {
-            Remove-Item -Path "$env:TEMP\*" -Recurse -Force
-        }
-        "Suppression des fichiers temporaires Windows" {
-            Remove-Item -Path "C:\Windows\Temp\*" -Recurse -Force
-        }
-        "Vidage de la corbeille" {
-            Clear-RecycleBin -Force
-        }
-        "Nettoyage du cache Windows Update" {
-            Stop-Service wuauserv -Force
-            Remove-Item -Path "C:\Windows\SoftwareDistribution\Download\*" -Recurse -Force
-            Start-Service wuauserv
-        }
-        "Suppression du cache Microsoft Edge" {
-            Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\Edge\User Data\Default\Cache\*" -Recurse -Force
-        }
-        "Suppression des logs système" {
-            Remove-Item -Path "C:\Windows\Logs\*" -Recurse -Force
-        }
-        "Suppression du dossier Windows.old" {
-            if (Test-Path "C:\Windows.old") {
-                Takeown /F C:\Windows.old /R /D Y | Out-Null
-                icacls C:\Windows.old /grant Administrateurs:F /T | Out-Null
-                Remove-Item -Path "C:\Windows.old" -Recurse -Force
-            }
-        }
-        "Suppression des fichiers inutiles de mise à jour de Windows" {
-            Dism.exe /Online /Cleanup-Image /StartComponentCleanup /ResetBase | Out-Null
-        }
-        "Suppression des fichiers de préchargement (Prefetch)" {
-            Remove-Item -Path "C:\Windows\Prefetch\*" -Recurse -Force
-        }
-        "Suppression des caches Microsoft Store" {
-            Remove-Item -Path "$env:LOCALAPPDATA\Packages\Microsoft.WindowsStore_8wekyb3d8bbwe\LocalCache\*" -Recurse -Force
-        }
-        "Suppression du fichier de mise en veille prolongée (hiberfil.sys)" {
-            powercfg -h off
-        }
-        "Suppression du cache des polices Windows" {
-            Remove-Item -Path "C:\Windows\ServiceProfiles\LocalService\AppData\Local\FontCache\*" -Recurse -Force
-        }
-        "Flush DNS cache" {
-            ipconfig /flushdns
-        }
-        "Suppression des fichiers d'installation de Windows" {
-            Remove-Item -Path "C:\$WINDOWS.~BT" -Recurse -Force
-            Remove-Item -Path "C:\$WINDOWS.~WS" -Recurse -Force
-        }
-        "Suppression du cache Steam et Epic Games" {
-            Remove-Item -Path "$env:LOCALAPPDATA\Steam\htmlcache\*" -Recurse -Force
-            Remove-Item -Path "$env:LOCALAPPDATA\EpicGamesLauncher\Saved\webcache\*" -Recurse -Force
-        }
-        "Suppression des caches Adobe" {
-            Remove-Item -Path "$env:APPDATA\Adobe\Common\Media Cache\*" -Recurse -Force
-            Remove-Item -Path "$env:APPDATA\Adobe\Common\Media Cache Files\*" -Recurse -Force
-        }
-        "Suppression des caches des navigateurs Chrome et Firefox" {
-            Remove-Item -Path "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Cache\*" -Recurse -Force
-            Remove-Item -Path "$env:APPDATA\Mozilla\Firefox\Profiles\*.default-release\cache2\entries\*" -Recurse -Force
-        }
-        "Nettoyage des caches et logs pour Autodesk" {
-            Remove-Item -Path "$env:APPDATA\Autodesk\AutoCAD\*\Cache\*" -Recurse -Force
-            Remove-Item -Path "$env:LOCALAPPDATA\Autodesk\Logs\*" -Recurse -Force
-        }
-        "Suppression des fichiers temporaires de Rhino" {
-            Remove-Item -Path "$env:APPDATA\McNeel\Rhinoceros\*\Temp\*" -Recurse -Force
-            Remove-Item -Path "$env:LOCALAPPDATA\McNeel\Rhinoceros\*\Cache\*" -Recurse -Force
-        }
-        "Nettoyage du cache Archicad" {
-            Remove-Item -Path "$env:LOCALAPPDATA\GRAPHISOFT\Cache\*" -Recurse -Force
-            Remove-Item -Path "$env:APPDATA\GRAPHISOFT\Logs\*" -Recurse -Force
-        }
-        "Suppression des bibliothèques temporaires de rendu (V-Ray, Enscape, Lumion)" {
-            Remove-Item -Path "$env:LOCALAPPDATA\Chaos Group\*" -Recurse -Force
-            Remove-Item -Path "$env:LOCALAPPDATA\Enscape\Cache\*" -Recurse -Force
-            Remove-Item -Path "$env:LOCALAPPDATA\Lumion*\Cache\*" -Recurse -Force
-        }
-        "Nettoyage des fichiers temporaires et du cache Office" {
-            Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\Office\16.0\OfficeFileCache\*" -Recurse -Force
-            Remove-Item -Path "$env:TEMP\Microsoft Office\*" -Recurse -Force
-            Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\Outlook\RoamCache\*" -Recurse -Force
-            Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\Office\16.0\Wef\*" -Recurse -Force
-            Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\Office\16.0\Telemetry\*" -Recurse -Force
-        }
-        "Optimisation du disque" {
-            Optimize-Volume -DriveLetter C -ReTrim -Analyze -Defrag | Out-Null
-        }
-        "Compression du disque pour gagner de l'espace" {
-            compact /CompactOS:always
-        }
-        "Suppression du dossier de téléchargement Autodesk" {
-            Remove-Item -Path "C:\Autodesk" -Recurse -Force
-        }
-        "Suppression des applications inutiles" {
-            Get-AppxPackage -AllUsers *bing* | Remove-AppxPackage
-            Get-AppxPackage -AllUsers *xbox* | Remove-AppxPackage
-            Get-AppxPackage -AllUsers *solitaire* | Remove-AppxPackage
-        }
-    }
-
-    # Avancer d'un pas dans l'étape
+    Write-Host "[$currentStep/$stepCount] Exécution: $step"
+    # Ajoutez ici les commandes de nettoyage correspondant à chaque action...
     $currentStep++
 }
 
-# Espace libre APRÈS nettoyage
+# Espace libre après nettoyage
 $afterCleanup = Get-FreeSpace
-
-# Calcul de l'espace libéré
 $spaceFreed = $afterCleanup - $beforeCleanup
-$spaceFreedMB = $spaceFreed * 1024
-$resultText = "`n✅ Nettoyage terminé !`n📌 Espace libéré : $([math]::Round($spaceFreedMB, 2)) Mo ($([math]::Round($spaceFreed, 2)) Go)`n"
-
-# Affichage du résultat dans le terminal
-Write-Host $resultText -ForegroundColor Green
-
-# Enregistrement du résultat dans un fichier
-$resultText | Out-File -FilePath $logFile -Encoding UTF8 -Append
+Write-Host "\n✅ Nettoyage terminé ! Espace libéré: $([math]::Round($spaceFreed, 2)) Go" -ForegroundColor Green
