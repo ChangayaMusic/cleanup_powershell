@@ -169,12 +169,13 @@ foreach ($step in $cleanupSteps) {
              Get-AppxPackage -AllUsers *solitaire* | Remove-AppxPackage
          }
      }
- 
+
      # Avancer d'un pas dans l'étape
      $currentStep++
  }
-    "✅ $step - Terminé" | Out-File -FilePath $logFile -Append
-    $currentStep++
+
+"✅ $step - Terminé" | Out-File -FilePath $logFile -Append
+$currentStep++
 
 
 # Espace libre APRÈS nettoyage
